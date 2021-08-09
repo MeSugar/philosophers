@@ -40,7 +40,6 @@ typedef struct	s_philo
 	int				n_times_ate;
 	int				last_meal;
 	int				dead;
-	int				print_time;
 	pthread_t		thread;
 	struct timeval	curr_time;
 	t_fork			**forks;
