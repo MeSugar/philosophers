@@ -20,10 +20,12 @@ typedef struct	s_args
 	int				time_to_eat;
 	int				time_to_sleep;
 	int				n_times_to_eat;
+	int				start_threads;
+	int				start_time;
 	int				curr_time;
-	struct timeval	start_time;
+	int				dead;
 	pthread_mutex_t	*write;
-}				t_agrs;
+}				t_args;
 
 typedef struct	s_fork
 {
@@ -39,11 +41,10 @@ typedef struct	s_philo
 	int				r_fork;
 	int				n_times_ate;
 	int				last_meal;
-	int				dead;
 	pthread_t		thread;
 	struct timeval	curr_time;
 	t_fork			**forks;
-	t_agrs			*args;
+	t_args			*args;
 }				t_philo;
 
 #endif
