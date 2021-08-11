@@ -8,9 +8,8 @@
 
 # define MALLOC 20
 # define INV_ARG 21
-# define LONELY_PHILO 22
-# define GET_TIME 23
-# define MUTEX 24
+# define GET_TIME 22
+# define MUTEX 23
 
 
 typedef struct	s_args
@@ -25,6 +24,7 @@ typedef struct	s_args
 	int				curr_time;
 	int				dead;
 	int				stopped_philos;
+	int				unclock_write;
 	pthread_mutex_t	*write;
 }				t_args;
 

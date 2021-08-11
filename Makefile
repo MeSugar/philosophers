@@ -6,7 +6,7 @@ CC			=	gcc
 
 INCLUDES	=	./
 
-SRCS		=	philos/main.c
+SRCS		=	philos/main.c philos/philos.h
 
 all : $(NAME)
 

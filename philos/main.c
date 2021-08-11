@@ -6,14 +6,33 @@ int	print_error_message(int error_type)
 		printf("Error: Malloc error occured\n");
 	else if (error_type == INV_ARG)
 		printf("Error: Invalid arguments\n");
-	else if (error_type == LONELY_PHILO)
-		printf("Error: No philosopher can eat with just one fork\n");
 	else if (error_type == GET_TIME)
 		printf("Error: \"Get time\" error occured\n");
 	return (1);
 }
 
-// void	print_routine_message(int num, )
+int	get_curr_time(void)
+{
+  struct timeval	curr_time;
+  int				ret;
+
+  gettimeofday(&curr_time, NULL);
+  ret = (curr_time.tv_sec * 1000) + (curr_time.tv_usec / 1000);
+  return (ret);
+}
+
+void  ft_usleep(int time_to_sleep)
+{
+  int	last_time;
+
+  last_time = get_curr_time() + time_to_sleep;
+  while (1)
+  {
+    if (get_curr_time() >= last_time)
+      break ;
+    usleep(500);
+  }
+}
 
 int	check_args(int argc, char **argv)
 {
@@ -30,8 +49,6 @@ int	check_args(int argc, char **argv)
 			if (argv[i][j] < '0' || argv[i][j] > '9')
 				return (print_error_message(INV_ARG));
 	}
-	if (argv[1][0] == '1' && !argv[1][1])
-		return (print_error_message(LONELY_PHILO));
 	return (0);
 }
 
@@ -66,6 +83,7 @@ t_args	*init_args(char **argv)
 	args->curr_time = 0;
 	args->dead = 0;
 	args->stopped_philos = 0;
+	args->unclock_write = 0;
 	args->write = malloc(sizeof(pthread_mutex_t));
 	if (!args->write)
 	{
@@ -155,19 +173,13 @@ t_philo **init_philos(t_args *args)
 
 void	ft_eat(t_philo *philo)
 {
-	struct timeval	start_time;
-
 	pthread_mutex_lock(philo->forks[philo->l_fork - 1]->mutex);
 	pthread_mutex_lock(philo->args->write);
 	if (!philo->args->start_time)
-	{
-		gettimeofday(&start_time, 0);
-		philo->args->start_time = (start_time.tv_sec * 1000) + (start_time.tv_usec / 1000);
-	}
-	gettimeofday(&philo->curr_time, 0);
-	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
-							- philo->args->start_time;
-	printf("%dms %d has taken a fork\n", philo->args->curr_time, philo->num);
+		philo->args->start_time = get_curr_time();
+	philo->args->curr_time = get_curr_time() - philo->args->start_time;
+	if (!philo->args->dead)
+		printf("%dms %d has taken a fork\n", philo->args->curr_time, philo->num);
 	pthread_mutex_unlock(philo->args->write);
 	//another fork
 	pthread_mutex_lock(philo->forks[philo->r_fork - 1]->mutex);
@@ -175,14 +187,16 @@ void	ft_eat(t_philo *philo)
 	gettimeofday(&philo->curr_time, 0);
 	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
 								- philo->args->start_time;
-	printf("%dms %d has taken a fork\n", philo->args->curr_time, philo->num);
-	gettimeofday(&philo->curr_time, 0);
-	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
-								- philo->args->start_time;
+	if (!philo->args->dead)
+		printf("%dms %d has taken a fork\n", philo->args->curr_time, philo->num);
+	// gettimeofday(&philo->curr_time, 0);
+	// philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
+	// 							- philo->args->start_time;
 	philo->last_meal = philo->args->curr_time;
-	printf("%dms %d is eating\n", philo->args->curr_time, philo->num);
+	if (!philo->args->dead)
+		printf("%dms %d is eating\n", philo->args->curr_time, philo->num);
 	pthread_mutex_unlock(philo->args->write);
-	usleep(philo->args->time_to_eat * 1000);
+	ft_usleep(philo->args->time_to_eat);
 	pthread_mutex_unlock(philo->forks[philo->l_fork - 1]->mutex);
 	pthread_mutex_unlock(philo->forks[philo->r_fork - 1]->mutex);
 }
@@ -193,14 +207,16 @@ void	ft_sleep_n_think(t_philo *philo)
 	gettimeofday(&philo->curr_time, 0);
 	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
 								- philo->args->start_time;
-	printf("%dms %d is sleeping\n", philo->args->curr_time, philo->num);
+	if (!philo->args->dead)
+		printf("%dms %d is sleeping\n", philo->args->curr_time, philo->num);
 	pthread_mutex_unlock(philo->args->write);
-	usleep(philo->args->time_to_sleep * 1000);
+	ft_usleep(philo->args->time_to_sleep);
 	pthread_mutex_lock(philo->args->write);
 	gettimeofday(&philo->curr_time, 0);
 	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
 								- philo->args->start_time;
-	printf("%dms %d is thinking\n", philo->args->curr_time, philo->num);
+	if (!philo->args->dead)
+		printf("%dms %d is thinking\n", philo->args->curr_time, philo->num);
 	pthread_mutex_unlock(philo->args->write);
 }
 
@@ -212,7 +228,7 @@ void	*philo_routine(void *philo)
 	while (!work->args->start_threads)
 		;
 	if (!(work->num % 2))
-		usleep(5000);
+		ft_usleep(5);
 	while (!work->args->dead)
 	{
 		ft_eat(work);
@@ -225,7 +241,6 @@ void	*philo_routine(void *philo)
 			work->args->stopped_philos++;
 			return (0);
 		}
-		// work->dead++;
 	}
 	return (0);
 }
@@ -253,6 +268,8 @@ void	ft_death_control(t_philo **philos, t_args *args)
 					i = -1;
 					while (philos[++i])
 						pthread_detach(philos[i]->thread);
+					args->unclock_write = 1;
+					break ;
 				}
 				pthread_mutex_unlock(args->write);
 			}
@@ -270,7 +287,7 @@ int	start_philos(t_philo **philos, t_args *args)
 	while (++i < args->philos)
 	{
 		pthread_create(&philos[i]->thread, 0, &philo_routine, (void *) philos[i]);
-		usleep(5000);
+		ft_usleep(5);
 	}
 	args->start_threads = 1;
 	ft_death_control(philos, args);
@@ -295,15 +312,10 @@ int	main(int argc, char **argv)
 			return (1);
 		if (start_philos(philos, args))
 			return (1);
+		if (args->unclock_write)
+			pthread_mutex_unlock(args->write);
 	}
 	else
 		return (1);
-	// printf("Philos number %lld \n", (unsigned long long)args->philos);
-	// printf("Time_to_die %lld \n", (unsigned long long)args->time_to_die);
-	// printf("Time_to_eat %lld \n", (unsigned long long)args->time_to_eat);
-	// printf("Time_to_sleep %lld \n", (unsigned long long)args->time_to_sleep);
-	// if (args->n_times_to_eat)
-	// 	printf("Number of times to eat %lld \n", (unsigned long long)args->n_times_to_eat);
-
 	return (0);
 }
