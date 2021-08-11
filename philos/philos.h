@@ -24,6 +24,7 @@ typedef struct	s_args
 	int				start_time;
 	int				curr_time;
 	int				dead;
+	int				stopped_philos;
 	pthread_mutex_t	*write;
 }				t_args;
 
@@ -41,6 +42,7 @@ typedef struct	s_philo
 	int				r_fork;
 	int				n_times_ate;
 	int				last_meal;
+	int				stopped;
 	pthread_t		thread;
 	struct timeval	curr_time;
 	t_fork			**forks;

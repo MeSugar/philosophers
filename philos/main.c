@@ -65,6 +65,7 @@ t_args	*init_args(char **argv)
 	args->start_threads = 0;
 	args->curr_time = 0;
 	args->dead = 0;
+	args->stopped_philos = 0;
 	args->write = malloc(sizeof(pthread_mutex_t));
 	if (!args->write)
 	{
@@ -116,6 +117,7 @@ int	fill_philo(t_philo *philo, t_fork **forks, t_args *args, int num)
 	philo->forks = forks;
 	philo->n_times_ate = 0;
 	philo->last_meal = 0;
+	philo->stopped = 0;
 	return (0);
 }
 
@@ -215,10 +217,14 @@ void	*philo_routine(void *philo)
 	{
 		ft_eat(work);
 		ft_sleep_n_think(work);
-		// if (work->args->n_times_to_eat != -1)
-		// 	work->n_times_ate++;
-		// if (work->n_times_ate == work->args->n_times_to_eat)
-		// 	break ;
+		if (work->args->n_times_to_eat != -1)
+			work->n_times_ate++;
+		if (work->n_times_ate == work->args->n_times_to_eat)
+		{
+			work->stopped = 1;
+			work->args->stopped_philos++;
+			return (0);
+		}
 		// work->dead++;
 	}
 	return (0);
@@ -230,23 +236,26 @@ void	ft_death_control(t_philo **philos, t_args *args)
 	int		curr_time;
 	struct	timeval time;
 
-	while (!args->dead)
+	while (!args->dead && args->stopped_philos != args->philos)
 	{
 		i = -1;
 		while (philos[++i] && args->start_time)
 		{
-			// pthread_mutex_lock(args->write);
-			gettimeofday(&time, 0);
-			curr_time = (time.tv_sec * 1000) + (time.tv_usec / 1000) - args->start_time;
-			if (curr_time - philos[i]->last_meal > args->time_to_die)
+			if (!philos[i]->stopped)
 			{
-				printf("%dms %d died\n", curr_time, philos[i]->num);
-				args->dead = 1;
-				i = -1;
-				while (philos[++i])
-					pthread_detach(philos[i]->thread);
+				pthread_mutex_lock(args->write);
+				gettimeofday(&time, 0);
+				curr_time = (time.tv_sec * 1000) + (time.tv_usec / 1000) - args->start_time;
+				if (curr_time - philos[i]->last_meal > args->time_to_die)
+				{
+					printf("%dms %d died\n", curr_time, philos[i]->num);
+					args->dead = 1;
+					i = -1;
+					while (philos[++i])
+						pthread_detach(philos[i]->thread);
+				}
+				pthread_mutex_unlock(args->write);
 			}
-			// pthread_mutex_unlock(args->write);
 		}
 	}
 }
