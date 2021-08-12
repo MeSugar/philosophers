@@ -1,109 +1,16 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: gdelta <marvin@42.fr>                      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2021/08/12 16:12:21 by gdelta            #+#    #+#             */
+/*   Updated: 2021/08/12 16:12:26 by gdelta           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "philos.h"
-#include "errno.h"
-
-int	print_error_message(int error_type)
-{
-	if (error_type == MALLOC)
-		printf("Error: Malloc error occured\n");
-	else if (error_type == INV_ARG)
-		printf("Error: Invalid arguments\n");
-	else if (error_type == GET_TIME)
-		printf("Error: \"Get time\" error occured\n");
-	return (1);
-}
-
-long int	get_curr_time(void)
-{
-  struct timeval	curr_time;
-  long	int		ret;
-
-  gettimeofday(&curr_time, NULL);
-  ret = (curr_time.tv_sec * 1000) + (curr_time.tv_usec / 1000);
-  return (ret);
-}
-
-void  ft_usleep(int time_to_sleep)
-{
-  unsigned long	last_time;
-
-  last_time = get_curr_time() + time_to_sleep;
-  while (1)
-  {
-    if (get_curr_time() >= last_time)
-      break ;
-    usleep(500);
-  }
-}
-
-int	check_args(int argc, char **argv)
-{
-	int	i;
-	int	j;
-
-	i = 0;
-	if (argc != 5 && argc != 6)
-		return (print_error_message(INV_ARG));
-	while (argv[++i])
-	{
-		j = -1;
-		while(argv[i][++j])
-			if (argv[i][j] < '0' || argv[i][j] > '9')
-				return (print_error_message(INV_ARG));
-	}
-	return (0);
-}
-
-int	ft_atoi(char *str)
-{
-	int	value;
-	
-	value = 0;
-	while (*str && *str >= '0' && *str <= '9')
-		value = 10 * value + (*str++ - '0');
-	return (value);
-}
-
-t_args	*init_args(char **argv)
-{
-	t_args	*args;
-
-	args = malloc(sizeof(t_args));
-	if (!args)
-	{	
-		print_error_message(MALLOC);
-		return (0);
-	}
-	args->n_times_to_eat = -1;
-	args->philos = ft_atoi(argv[1]);
-	args->time_to_die = ft_atoi(argv[2]);
-	args->time_to_eat = ft_atoi(argv[3]);
-	args->time_to_sleep = ft_atoi(argv[4]);
-	if (argv[5])
-		args->n_times_to_eat = ft_atoi(argv[5]);
-	args->start_threads = 0;
-	args->curr_time = 0;
-	args->start_time = 0;
-	args->dead = 0;
-	args->stopped_philos = 0;
-	args->unclock_write = 0;
-	if (pthread_mutex_init(&args->write, 0) != 0)
-	{
-		print_error_message(MUTEX);
-		return (0);
-	}
-	if (pthread_mutex_init(&args->start, 0) != 0)
-	{
-		print_error_message(MUTEX);
-		return (0);
-	}
-	//  args->write = malloc(sizeof(pthread_mutex_t));
-	// if (!args->write)
-	// {
-	// 	print_error_message(MALLOC);
-	// 	return (0);
-	// }
-	return (args);
-}
 
 int	fill_fork(t_fork *fork, int num)
 {
@@ -115,24 +22,6 @@ int	fill_fork(t_fork *fork, int num)
 	if (pthread_mutex_init(fork->mutex, 0) != 0)
 		return (print_error_message(MUTEX));
 	return (0);
-}
-
-int	init_forks(t_fork **forks, t_args *args)
-{
-	int	i;
-	int		ret;
-
-	i = 0;
-	ret = 0;
-	while (i < args->philos && !ret)
-	{
-		forks[i] = malloc(sizeof(t_fork));
-		if (!forks[i])
-			return (print_error_message(MALLOC));
-		ret = fill_fork(forks[i], i);
-		i++;
-	}
-	return (ret);
 }
 
 int	fill_philo(t_philo *philo, t_fork **forks, t_args *args, int num)
@@ -151,135 +40,6 @@ int	fill_philo(t_philo *philo, t_fork **forks, t_args *args, int num)
 	return (0);
 }
 
-t_philo **init_philos(t_args *args)
-{
-	t_philo	**philos;
-	t_fork	**forks;
-	int		ret;
-	int		i;
-
-	ret = 0;
-	philos = malloc(sizeof(t_philo*) * (args->philos + 1));
-	if (!philos)
-		ret = print_error_message(MALLOC);
-	philos[args->philos] = 0;
-	forks = malloc(sizeof(t_fork*) * (args->philos + 1));
-	if (!forks)
-		ret = print_error_message(MALLOC);
-	forks[args->philos] = 0;
-	i = 0;
-	while (i < args->philos && !ret)
-	{
-		philos[i] = malloc(sizeof(t_philo));
-		if (!philos[i])
-			ret = print_error_message(MALLOC);
-		if (!ret)
-			ret = fill_philo(philos[i], forks, args, i);
-		i++;
-	}
-	ret = init_forks(forks, args);
-	if (ret)
-		return (0);
-	return (philos);
-}
-
-void	ft_eat(t_philo *philo)
-{
-	pthread_mutex_lock(philo->forks[philo->l_fork - 1]->mutex);
-	pthread_mutex_lock(&philo->args->write);
-	philo->args->curr_time = get_curr_time() - philo->args->start_time;
-	if (!philo->args->dead)
-		printf("%ld %d has taken a fork\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(&philo->args->write);
-	pthread_mutex_lock(philo->forks[philo->r_fork - 1]->mutex);
-	pthread_mutex_lock(&philo->args->write);
-	philo->args->curr_time = get_curr_time() - philo->args->start_time;
-	if (!philo->args->dead)
-		printf("%ld %d has taken a fork\n", philo->args->curr_time, philo->num);
-	philo->last_meal = philo->args->curr_time;
-	if (!philo->args->dead)
-		printf("%ld %d is eating\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(&philo->args->write);
-	ft_usleep(philo->args->time_to_eat);
-	pthread_mutex_unlock(philo->forks[philo->l_fork - 1]->mutex);
-	pthread_mutex_unlock(philo->forks[philo->r_fork - 1]->mutex);
-}
-
-void	ft_sleep_n_think(t_philo *philo)
-{
-	pthread_mutex_lock(&philo->args->write);
-	gettimeofday(&philo->curr_time, 0);
-	philo->args->curr_time = get_curr_time() - philo->args->start_time;
-	if (!philo->args->dead)
-		printf("%ld %d is sleeping\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(&philo->args->write);
-	ft_usleep(philo->args->time_to_sleep);
-	pthread_mutex_lock(&philo->args->write);
-	gettimeofday(&philo->curr_time, 0);
-	philo->args->curr_time = get_curr_time() - philo->args->start_time;
-	if (!philo->args->dead)
-		printf("%ld %d is thinking\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(&philo->args->write);
-}
-
-void	*philo_routine(void *philo)
-{
-	t_philo 		*work;
-		
-	work = (t_philo *) philo;
-	pthread_mutex_lock(&work->args->start);
-	if (!work->args->start_time)
-		work->args->start_time = get_curr_time();
-	pthread_mutex_unlock(&work->args->start);
-	if (!(work->num % 2))
-		ft_usleep(5);
-	while (!work->args->dead)
-	{
-		ft_eat(work);
-		ft_sleep_n_think(work);
-		if (work->args->n_times_to_eat != -1)
-			work->n_times_ate++;
-		if (work->n_times_ate == work->args->n_times_to_eat)
-		{
-			work->stopped = 1;
-			work->args->stopped_philos++;
-			return (0);
-		}
-	}
-	return (0);
-}
-
-void	ft_death_control(t_philo **philos, t_args *args)
-{
-	int				i;
-	long int		curr_time;
-
-	while (!args->dead && args->stopped_philos != args->philos)
-	{
-		i = -1;
-		while (philos[++i] && args->start_time)
-		{
-			if (!philos[i]->stopped)
-			{
-				pthread_mutex_lock(&args->write);
-				curr_time = get_curr_time() - args->start_time;
-				if (curr_time - philos[i]->last_meal > args->time_to_die)
-				{
-					args->dead = 1;
-					printf("%ld %d died\n", curr_time, philos[i]->num);
-					i = -1;
-					while (philos[++i])
-						pthread_detach(philos[i]->thread);
-					args->unclock_write = 1;
-					return ;
-				}
-				pthread_mutex_unlock(&args->write);
-			}
-		}
-		usleep(1000);
-	}
-}
-
 int	start_philos(t_philo **philos, t_args *args)
 {
 	int	i;
@@ -290,7 +50,8 @@ int	start_philos(t_philo **philos, t_args *args)
 	pthread_mutex_lock(&args->start);
 	while (++i < args->philos)
 	{
-		pthread_create(&philos[i]->thread, 0, &philo_routine, (void *) philos[i]);
+		pthread_create(&philos[i]->thread, 0,
+			&philo_routine, (void *) philos[i]);
 		usleep(100);
 	}
 	pthread_mutex_unlock(&args->start);
@@ -301,10 +62,21 @@ int	start_philos(t_philo **philos, t_args *args)
 	return (0);
 }
 
+void	mutex_destroyer(t_args *args, t_philo **philos)
+{
+	int	i;
+
+	pthread_mutex_destroy(&args->start);
+	pthread_mutex_destroy(&args->write);
+	i = -1;
+	while (++i < args->philos)
+		pthread_mutex_destroy(philos[0]->forks[i]->mutex);
+}
+
 int	main(int argc, char **argv)
 {
 	t_args	*args;
-	t_philo **philos;
+	t_philo	**philos;
 
 	if (!check_args(argc, argv))
 	{

@@ -8,7 +8,7 @@ INCLUDES	=	philos/includes
 
 HEADER 		= 	philos/includes/philos.h
 
-SRCS		=	philos/main.c
+SRCS		=	philos/main.c philos/init.c philos/utils.c philos/philo_activities.c
 
 all : $(NAME)
 

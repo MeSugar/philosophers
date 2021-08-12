@@ -1,5 +1,0 @@
-#!/bin/bash
-
-for ((i=0; i<20; i++)); do
-    ./philo 200 130 60 60
-done
