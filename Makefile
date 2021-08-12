@@ -4,14 +4,16 @@ CFLAGS		=	-Wall -Wextra -Werror
 
 CC			=	gcc
 
-INCLUDES	=	./
+INCLUDES	=	philos/includes
 
-SRCS		=	philos/main.c philos/philos.h
+HEADER 		= 	philos/includes/philos.h
+
+SRCS		=	philos/main.c
 
 all : $(NAME)
 
-$(NAME) : $(SRCS)
-		@$(CC) -g -o $(NAME) $(CFLAGS) $(SRCS) -I $(INCLUDES) -pthread
+$(NAME) : $(SRCS) $(HEADER)
+		@$(CC) $(SRCS) -o $(NAME) -I $(INCLUDES) -pthread
 
 clean :
 		@rm -rf *.o

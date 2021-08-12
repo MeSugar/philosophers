@@ -20,12 +20,13 @@ typedef struct	s_args
 	int				time_to_sleep;
 	int				n_times_to_eat;
 	int				start_threads;
-	int				start_time;
-	int				curr_time;
+	long int		start_time;
+	long int  			curr_time;
 	int				dead;
 	int				stopped_philos;
 	int				unclock_write;
-	pthread_mutex_t	*write;
+	pthread_mutex_t	write;
+	pthread_mutex_t	start;
 }				t_args;
 
 typedef struct	s_fork

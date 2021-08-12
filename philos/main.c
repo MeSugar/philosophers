@@ -1,4 +1,5 @@
 #include "philos.h"
+#include "errno.h"
 
 int	print_error_message(int error_type)
 {
@@ -11,10 +12,10 @@ int	print_error_message(int error_type)
 	return (1);
 }
 
-int	get_curr_time(void)
+long int	get_curr_time(void)
 {
   struct timeval	curr_time;
-  int				ret;
+  long	int		ret;
 
   gettimeofday(&curr_time, NULL);
   ret = (curr_time.tv_sec * 1000) + (curr_time.tv_usec / 1000);
@@ -23,7 +24,7 @@ int	get_curr_time(void)
 
 void  ft_usleep(int time_to_sleep)
 {
-  int	last_time;
+  unsigned long	last_time;
 
   last_time = get_curr_time() + time_to_sleep;
   while (1)
@@ -81,15 +82,26 @@ t_args	*init_args(char **argv)
 		args->n_times_to_eat = ft_atoi(argv[5]);
 	args->start_threads = 0;
 	args->curr_time = 0;
+	args->start_time = 0;
 	args->dead = 0;
 	args->stopped_philos = 0;
 	args->unclock_write = 0;
-	args->write = malloc(sizeof(pthread_mutex_t));
-	if (!args->write)
+	if (pthread_mutex_init(&args->write, 0) != 0)
 	{
-		print_error_message(MALLOC);
+		print_error_message(MUTEX);
 		return (0);
 	}
+	if (pthread_mutex_init(&args->start, 0) != 0)
+	{
+		print_error_message(MUTEX);
+		return (0);
+	}
+	//  args->write = malloc(sizeof(pthread_mutex_t));
+	// if (!args->write)
+	// {
+	// 	print_error_message(MALLOC);
+	// 	return (0);
+	// }
 	return (args);
 }
 
@@ -174,28 +186,20 @@ t_philo **init_philos(t_args *args)
 void	ft_eat(t_philo *philo)
 {
 	pthread_mutex_lock(philo->forks[philo->l_fork - 1]->mutex);
-	pthread_mutex_lock(philo->args->write);
-	if (!philo->args->start_time)
-		philo->args->start_time = get_curr_time();
+	pthread_mutex_lock(&philo->args->write);
 	philo->args->curr_time = get_curr_time() - philo->args->start_time;
 	if (!philo->args->dead)
-		printf("%dms %d has taken a fork\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(philo->args->write);
-	//another fork
+		printf("%ld %d has taken a fork\n", philo->args->curr_time, philo->num);
+	pthread_mutex_unlock(&philo->args->write);
 	pthread_mutex_lock(philo->forks[philo->r_fork - 1]->mutex);
-	pthread_mutex_lock(philo->args->write);
-	gettimeofday(&philo->curr_time, 0);
-	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
-								- philo->args->start_time;
+	pthread_mutex_lock(&philo->args->write);
+	philo->args->curr_time = get_curr_time() - philo->args->start_time;
 	if (!philo->args->dead)
-		printf("%dms %d has taken a fork\n", philo->args->curr_time, philo->num);
-	// gettimeofday(&philo->curr_time, 0);
-	// philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
-	// 							- philo->args->start_time;
+		printf("%ld %d has taken a fork\n", philo->args->curr_time, philo->num);
 	philo->last_meal = philo->args->curr_time;
 	if (!philo->args->dead)
-		printf("%dms %d is eating\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(philo->args->write);
+		printf("%ld %d is eating\n", philo->args->curr_time, philo->num);
+	pthread_mutex_unlock(&philo->args->write);
 	ft_usleep(philo->args->time_to_eat);
 	pthread_mutex_unlock(philo->forks[philo->l_fork - 1]->mutex);
 	pthread_mutex_unlock(philo->forks[philo->r_fork - 1]->mutex);
@@ -203,21 +207,19 @@ void	ft_eat(t_philo *philo)
 
 void	ft_sleep_n_think(t_philo *philo)
 {
-	pthread_mutex_lock(philo->args->write);
+	pthread_mutex_lock(&philo->args->write);
 	gettimeofday(&philo->curr_time, 0);
-	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
-								- philo->args->start_time;
+	philo->args->curr_time = get_curr_time() - philo->args->start_time;
 	if (!philo->args->dead)
-		printf("%dms %d is sleeping\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(philo->args->write);
+		printf("%ld %d is sleeping\n", philo->args->curr_time, philo->num);
+	pthread_mutex_unlock(&philo->args->write);
 	ft_usleep(philo->args->time_to_sleep);
-	pthread_mutex_lock(philo->args->write);
+	pthread_mutex_lock(&philo->args->write);
 	gettimeofday(&philo->curr_time, 0);
-	philo->args->curr_time = (philo->curr_time.tv_sec * 1000) + (philo->curr_time.tv_usec / 1000)
-								- philo->args->start_time;
+	philo->args->curr_time = get_curr_time() - philo->args->start_time;
 	if (!philo->args->dead)
-		printf("%dms %d is thinking\n", philo->args->curr_time, philo->num);
-	pthread_mutex_unlock(philo->args->write);
+		printf("%ld %d is thinking\n", philo->args->curr_time, philo->num);
+	pthread_mutex_unlock(&philo->args->write);
 }
 
 void	*philo_routine(void *philo)
@@ -225,8 +227,10 @@ void	*philo_routine(void *philo)
 	t_philo 		*work;
 		
 	work = (t_philo *) philo;
-	while (!work->args->start_threads)
-		;
+	pthread_mutex_lock(&work->args->start);
+	if (!work->args->start_time)
+		work->args->start_time = get_curr_time();
+	pthread_mutex_unlock(&work->args->start);
 	if (!(work->num % 2))
 		ft_usleep(5);
 	while (!work->args->dead)
@@ -247,9 +251,8 @@ void	*philo_routine(void *philo)
 
 void	ft_death_control(t_philo **philos, t_args *args)
 {
-	int		i;
-	int		curr_time;
-	struct	timeval time;
+	int				i;
+	long int		curr_time;
 
 	while (!args->dead && args->stopped_philos != args->philos)
 	{
@@ -258,22 +261,22 @@ void	ft_death_control(t_philo **philos, t_args *args)
 		{
 			if (!philos[i]->stopped)
 			{
-				pthread_mutex_lock(args->write);
-				gettimeofday(&time, 0);
-				curr_time = (time.tv_sec * 1000) + (time.tv_usec / 1000) - args->start_time;
+				pthread_mutex_lock(&args->write);
+				curr_time = get_curr_time() - args->start_time;
 				if (curr_time - philos[i]->last_meal > args->time_to_die)
 				{
-					printf("%dms %d died\n", curr_time, philos[i]->num);
 					args->dead = 1;
+					printf("%ld %d died\n", curr_time, philos[i]->num);
 					i = -1;
 					while (philos[++i])
 						pthread_detach(philos[i]->thread);
 					args->unclock_write = 1;
-					break ;
+					return ;
 				}
-				pthread_mutex_unlock(args->write);
+				pthread_mutex_unlock(&args->write);
 			}
 		}
+		usleep(1000);
 	}
 }
 
@@ -284,12 +287,13 @@ int	start_philos(t_philo **philos, t_args *args)
 	i = -1;
 	if (args->n_times_to_eat == 0)
 		return (0);
+	pthread_mutex_lock(&args->start);
 	while (++i < args->philos)
 	{
 		pthread_create(&philos[i]->thread, 0, &philo_routine, (void *) philos[i]);
-		ft_usleep(5);
+		usleep(100);
 	}
-	args->start_threads = 1;
+	pthread_mutex_unlock(&args->start);
 	ft_death_control(philos, args);
 	i = -1;
 	while (++i < args->philos)
@@ -313,7 +317,8 @@ int	main(int argc, char **argv)
 		if (start_philos(philos, args))
 			return (1);
 		if (args->unclock_write)
-			pthread_mutex_unlock(args->write);
+			pthread_mutex_unlock(&args->write);
+		mutex_destroyer(args, philos);
 	}
 	else
 		return (1);

@@ -1,5 +1,5 @@
 #!/bin/bash
 
 for ((i=0; i<20; i++)); do
-    ./philo 199 120 60 60
+    ./philo 200 130 60 60
 done
