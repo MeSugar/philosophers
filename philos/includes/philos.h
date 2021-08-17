@@ -43,7 +43,7 @@ typedef struct s_args
 typedef struct s_fork
 {
 	int				num;
-	pthread_mutex_t	*mutex;
+	pthread_mutex_t	mutex;
 
 }				t_fork;
 

@@ -14,13 +14,13 @@
 
 static void	ft_eat(t_philo *philo)
 {
-	pthread_mutex_lock(philo->forks[philo->l_fork - 1]->mutex);
+	pthread_mutex_lock(&philo->forks[philo->l_fork - 1]->mutex);
 	pthread_mutex_lock(&philo->args->write);
 	philo->args->curr_time = get_curr_time() - philo->args->start_time;
 	if (!philo->args->dead)
 		printf("%ld %d has taken a fork\n", philo->args->curr_time, philo->num);
 	pthread_mutex_unlock(&philo->args->write);
-	pthread_mutex_lock(philo->forks[philo->r_fork - 1]->mutex);
+	pthread_mutex_lock(&philo->forks[philo->r_fork - 1]->mutex);
 	pthread_mutex_lock(&philo->args->write);
 	philo->args->curr_time = get_curr_time() - philo->args->start_time;
 	if (!philo->args->dead)
@@ -30,8 +30,8 @@ static void	ft_eat(t_philo *philo)
 		printf("%ld %d is eating\n", philo->args->curr_time, philo->num);
 	pthread_mutex_unlock(&philo->args->write);
 	ft_usleep(philo->args->time_to_eat);
-	pthread_mutex_unlock(philo->forks[philo->l_fork - 1]->mutex);
-	pthread_mutex_unlock(philo->forks[philo->r_fork - 1]->mutex);
+	pthread_mutex_unlock(&philo->forks[philo->l_fork - 1]->mutex);
+	pthread_mutex_unlock(&philo->forks[philo->r_fork - 1]->mutex);
 }
 
 static void	ft_sleep_n_think(t_philo *philo)

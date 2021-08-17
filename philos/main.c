@@ -16,10 +16,7 @@ int	fill_fork(t_fork *fork, int num)
 {
 	num++;
 	fork->num = num;
-	fork->mutex = malloc(sizeof(pthread_mutex_t));
-	if (!fork->mutex)
-		return (print_error_message(MALLOC));
-	if (pthread_mutex_init(fork->mutex, 0) != 0)
+	if (pthread_mutex_init(&fork->mutex, 0) != 0)
 		return (print_error_message(MUTEX));
 	return (0);
 }
@@ -62,7 +59,7 @@ int	start_philos(t_philo **philos, t_args *args)
 	return (0);
 }
 
-void	mutex_destroyer(t_args *args, t_philo **philos)
+void	free_n_destroy(t_args *args, t_philo **philos)
 {
 	int	i;
 
@@ -70,7 +67,16 @@ void	mutex_destroyer(t_args *args, t_philo **philos)
 	pthread_mutex_destroy(&args->write);
 	i = -1;
 	while (++i < args->philos)
-		pthread_mutex_destroy(philos[0]->forks[i]->mutex);
+	{
+		pthread_mutex_destroy(&philos[0]->forks[i]->mutex);
+		free(philos[0]->forks[i]);
+	}
+	free(philos[0]->forks);
+	i = -1;
+	while (++i < args->philos)
+		free(philos[i]);
+	free(philos);
+	free(args);
 }
 
 int	main(int argc, char **argv)
@@ -90,7 +96,7 @@ int	main(int argc, char **argv)
 			return (1);
 		if (args->unclock_write)
 			pthread_mutex_unlock(&args->write);
-		mutex_destroyer(args, philos);
+		free_n_destroy(args, philos);
 	}
 	else
 		return (1);
