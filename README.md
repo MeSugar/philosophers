@@ -21,3 +21,10 @@ Once awake, they start thinking again. The simulation stops when a philosopher d
 • No need to say that philosophers should avoid dying!
 • The program must not have any data races.
 ```
+## Usage
+```
+git clone https://github.com/MeSugar/philosophers.git
+cd philosophers
+make
+./philo
+```
